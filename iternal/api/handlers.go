@@ -12,6 +12,11 @@ type TaskHandler struct {
 	service *service.TaskService
 }
 
+type createTaskRequest struct {
+	Title       string `json:"title"`
+	Description string `json:"description"`
+}
+
 func NewTaskHandler(service *service.TaskService) *TaskHandler {
 	return &TaskHandler{service: service}
 }
@@ -68,10 +73,7 @@ func (h *TaskHandler) handleGetById(w http.ResponseWriter, r *http.Request, id i
 }
 
 func (h *TaskHandler) handlePost(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Title       string `json:"title"`
-		Description string `json:"description"`
-	}
+	var body createTaskRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)
@@ -91,10 +93,7 @@ func (h *TaskHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TaskHandler) handlePut(w http.ResponseWriter, r *http.Request, id int) {
-	var body struct {
-		Title       string `json:"title"`
-		Description string `json:"description"`
-	}
+	var body createTaskRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, "invalid json", http.StatusBadRequest)

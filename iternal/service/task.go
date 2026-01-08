@@ -13,16 +13,18 @@ func NewTaskService(storage storage.TaskStorage) *TaskService {
 	return &TaskService{storage: storage}
 }
 
-func (s *TaskService) GetAll() (map[int]*models.Task, error) {
-	return s.storage.GetAll()
-}
 func (s *TaskService) GetById(id int) (*models.Task, error) {
 	return s.storage.GetById(id)
+}
+
+func (s *TaskService) GetAll() (map[int]*models.Task, error) {
+	return s.storage.GetAll()
 }
 
 func (s *TaskService) Create(t *models.Task) error {
 	return s.storage.Create(t)
 }
+
 func (s *TaskService) Update(t *models.Task) error {
 	return s.storage.Update(t)
 }
