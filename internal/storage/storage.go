@@ -1,17 +1,20 @@
 package storage
 
 import (
-	"TaskManager/iternal/models"
+	"TaskManager/internal/models"
+	"errors"
 	"fmt"
 )
 
 type TaskStorage interface {
 	GetById(id int) (*models.Task, error)
-	GetAll() (map[int]*models.Task, error)
+	GetAll() ([]*models.Task, error)
 	Create(t *models.Task) error
 	Update(t *models.Task) error
 	Delete(id int) error
 }
+
+var ErrNotFound = errors.New("not found")
 
 type inMemoryTaskStorage struct {
 	data   map[int]*models.Task
@@ -28,18 +31,19 @@ func NewInMemoryTaskStorage() *inMemoryTaskStorage {
 func (s *inMemoryTaskStorage) GetById(id int) (*models.Task, error) {
 	task, ok := s.data[id]
 	if !ok {
-		return nil, fmt.Errorf("There's no %d id", id)
+		return nil, fmt.Errorf("task %v :%w", id, ErrNotFound)
 	}
 
-	return task, nil
+	copy := *task
+	return &copy, nil
 }
 
-func (s *inMemoryTaskStorage) GetAll() (map[int]*models.Task, error) {
-	if len(s.data) == 0 {
-		return nil, fmt.Errorf("Task list is empty")
+func (s *inMemoryTaskStorage) GetAll() ([]*models.Task, error) {
+	tasks := make([]*models.Task, 0, len(s.data))
+	for _, t := range s.data {
+		tasks = append(tasks, t)
 	}
-
-	return s.data, nil
+	return tasks, nil
 }
 
 func (s *inMemoryTaskStorage) Create(t *models.Task) error {
@@ -50,8 +54,8 @@ func (s *inMemoryTaskStorage) Create(t *models.Task) error {
 }
 
 func (s *inMemoryTaskStorage) Update(t *models.Task) error {
-	if t.Id <= 0 {
-		return fmt.Errorf("Некорректный id %d", t.Id)
+	if _, ok := s.data[t.Id]; !ok {
+		return fmt.Errorf("task %v: %w", t.Id, ErrNotFound)
 	}
 
 	s.data[t.Id] = t
@@ -64,5 +68,5 @@ func (s *inMemoryTaskStorage) Delete(id int) error {
 		return nil
 	}
 
-	return fmt.Errorf("нет таски с таким id %d", id)
+	return fmt.Errorf("task %v: %w", id, ErrNotFound)
 }

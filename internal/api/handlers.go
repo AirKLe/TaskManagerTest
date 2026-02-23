@@ -1,8 +1,8 @@
 package api
 
 import (
-	"TaskManager/iternal/models"
-	"TaskManager/iternal/service"
+	"TaskManager/internal/models"
+	"TaskManager/internal/service"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -26,9 +26,9 @@ func (h *TaskHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if strId == "" {
 		switch r.Method {
 		case http.MethodGet:
-			h.handleGetAll(w, r)
+			h.handleListTasks(w, r)
 		case http.MethodPost:
-			h.handlePost(w, r)
+			h.handleCreateTask(w, r)
 		default:
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		}
@@ -44,25 +44,25 @@ func (h *TaskHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case http.MethodGet:
-		h.handleGetById(w, r, id)
+		h.handleGetTask(w, r, id)
 	case http.MethodDelete:
-		h.handleDelete(w, r, id)
+		h.handleDeleteTask(w, r, id)
 	case http.MethodPut:
-		h.handlePut(w, r, id)
+		h.handleUpdateTask(w, r, id)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
-func (h *TaskHandler) handleGetAll(w http.ResponseWriter, r *http.Request) {
-	tasks, _ := h.service.GetAll()
+func (h *TaskHandler) handleListTasks(w http.ResponseWriter, r *http.Request) {
+	tasks, _ := h.service.ListTasks()
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tasks)
 }
 
-func (h *TaskHandler) handleGetById(w http.ResponseWriter, r *http.Request, id int) {
-	task, _ := h.service.GetById(id)
+func (h *TaskHandler) handleGetTask(w http.ResponseWriter, r *http.Request, id int) {
+	task, _ := h.service.GetTask(id)
 	if task == nil {
 		http.NotFound(w, r)
 		return
@@ -72,7 +72,7 @@ func (h *TaskHandler) handleGetById(w http.ResponseWriter, r *http.Request, id i
 	json.NewEncoder(w).Encode(task)
 }
 
-func (h *TaskHandler) handlePost(w http.ResponseWriter, r *http.Request) {
+func (h *TaskHandler) handleCreateTask(w http.ResponseWriter, r *http.Request) {
 	var body createTaskRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -86,13 +86,13 @@ func (h *TaskHandler) handlePost(w http.ResponseWriter, r *http.Request) {
 		Description: body.Description,
 	}
 
-	h.service.Create(t)
+	h.service.CreateTask(t)
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(t)
 }
 
-func (h *TaskHandler) handlePut(w http.ResponseWriter, r *http.Request, id int) {
+func (h *TaskHandler) handleUpdateTask(w http.ResponseWriter, r *http.Request, id int) {
 	var body createTaskRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
@@ -106,14 +106,14 @@ func (h *TaskHandler) handlePut(w http.ResponseWriter, r *http.Request, id int) 
 		Description: body.Description,
 	}
 
-	h.service.Update(t)
+	h.service.UpdateTask(t)
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(t)
 }
 
-func (h *TaskHandler) handleDelete(w http.ResponseWriter, r *http.Request, id int) {
-	if err := h.service.Delete(id); err != nil {
+func (h *TaskHandler) handleDeleteTask(w http.ResponseWriter, r *http.Request, id int) {
+	if err := h.service.DeleteTask(id); err != nil {
 		http.Error(w, "not deleted", http.StatusBadRequest)
 		return
 	}

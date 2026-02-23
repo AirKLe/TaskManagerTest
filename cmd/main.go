@@ -1,9 +1,9 @@
 package main
 
 import (
-	"TaskManager/iternal/api"
-	"TaskManager/iternal/service"
-	"TaskManager/iternal/storage"
+	"TaskManager/internal/api"
+	"TaskManager/internal/service"
+	"TaskManager/internal/storage"
 	"log"
 	"net/http"
 )
