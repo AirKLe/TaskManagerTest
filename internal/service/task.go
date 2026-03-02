@@ -3,8 +3,25 @@ package service
 import (
 	"TaskManager/internal/models"
 	"TaskManager/internal/storage"
+	"errors"
 	"fmt"
 )
+
+type NotFoundError struct {
+	Resource string
+	Id       int
+}
+
+func (e *NotFoundError) Error() string {
+	return fmt.Sprintf("%s with id %d not found", e.Resource, e.Id)
+}
+
+func NewNotFoundError(resource string, id int) error {
+	return &NotFoundError{
+		Resource: resource,
+		Id:       id,
+	}
+}
 
 type ValidationError struct {
 	Field   string
@@ -17,7 +34,7 @@ func (e *ValidationError) Error() string {
 		return fmt.Sprintf("validation failed: field = %s message = %s", e.Field, e.Message)
 	}
 
-	return fmt.Sprintf("validation failed: field = %s  value = %v message = %s", e.Field, e.Value, e.Message)
+	return fmt.Sprintf("validation failed: field = %s value = %v message = %s", e.Field, e.Value, e.Message)
 }
 
 func NewValidationError(field string, value any, message string) error {
@@ -41,7 +58,16 @@ func (s *TaskService) GetTask(id int) (*models.Task, error) {
 		return nil, NewValidationError("id", id, "invalid")
 	}
 
-	return s.storage.GetById(id)
+	task, err := s.storage.GetById(id)
+	if err != nil {
+		if errors.Is(err, storage.ErrNotFound) {
+			return nil, NewNotFoundError("task", id)
+		}
+
+		return nil, err
+	}
+
+	return task, nil
 }
 
 func (s *TaskService) ListTasks() ([]*models.Task, error) {
@@ -73,7 +99,15 @@ func (s *TaskService) UpdateTask(t *models.Task) error {
 		return NewValidationError("title", nil, "invalid")
 	}
 
-	return s.storage.Update(t)
+	err := s.storage.Update(t)
+	if err != nil {
+		if errors.Is(err, storage.ErrNotFound) {
+			return NewNotFoundError("task", t.Id)
+		}
+		return err
+	}
+
+	return nil
 }
 
 func (s *TaskService) DeleteTask(id int) error {
@@ -81,5 +115,13 @@ func (s *TaskService) DeleteTask(id int) error {
 		return NewValidationError("id", id, "invalid")
 	}
 
-	return s.storage.Delete(id)
+	err := s.storage.Delete(id)
+	if err != nil {
+		if errors.Is(err, storage.ErrNotFound) {
+			return NewNotFoundError("task", id)
+		}
+		return err
+	}
+
+	return nil
 }
