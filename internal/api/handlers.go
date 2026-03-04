@@ -4,21 +4,53 @@ import (
 	"TaskManager/internal/models"
 	"TaskManager/internal/service"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 )
-
-type TaskHandler struct {
-	service *service.TaskService
-}
 
 type createTaskRequest struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 }
 
+type TaskHandler struct {
+	service *service.TaskService
+}
+
 func NewTaskHandler(service *service.TaskService) *TaskHandler {
 	return &TaskHandler{service: service}
+}
+
+func (h *TaskHandler) handleError(w http.ResponseWriter, err error) {
+	w.Header().Set("Content-Type", "application/json")
+	var ve *service.ValidationError
+	if errors.As(err, &ve) {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]any{
+			"error":   "validation_error",
+			"field":   ve.Field,
+			"value":   ve.Value,
+			"message": ve.Message,
+		})
+		return
+	}
+
+	var nf *service.NotFoundError
+	if errors.As(err, &nf) {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]any{
+			"error":    "not_found",
+			"resource": nf.Resource,
+			"id":       nf.Id,
+		})
+	}
+
+	w.WriteHeader(http.StatusInternalServerError)
+
+	json.NewEncoder(w).Encode(map[string]any{
+		"error": "internal_error",
+	})
 }
 
 func (h *TaskHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -39,7 +71,7 @@ func (h *TaskHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.Atoi(strId)
 
 	if err != nil {
-		http.Error(w, "method not allowed", http.StatusBadRequest)
+		http.Error(w, "invalid id", http.StatusBadRequest)
 		return
 	}
 	switch r.Method {
@@ -55,17 +87,19 @@ func (h *TaskHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TaskHandler) handleListTasks(w http.ResponseWriter, r *http.Request) {
-	tasks, _ := h.service.ListTasks()
+	tasks, err := h.service.ListTasks()
+	if err != nil {
+		h.handleError(w, err)
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(tasks)
 }
 
 func (h *TaskHandler) handleGetTask(w http.ResponseWriter, r *http.Request, id int) {
-	task, _ := h.service.GetTask(id)
-	if task == nil {
-		http.NotFound(w, r)
-		return
+	task, err := h.service.GetTask(id)
+	if err != nil {
+		h.handleError(w, err)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -81,7 +115,6 @@ func (h *TaskHandler) handleCreateTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	t := &models.Task{
-		Id:          0,
 		Title:       body.Title,
 		Description: body.Description,
 	}
@@ -114,7 +147,7 @@ func (h *TaskHandler) handleUpdateTask(w http.ResponseWriter, r *http.Request, i
 
 func (h *TaskHandler) handleDeleteTask(w http.ResponseWriter, r *http.Request, id int) {
 	if err := h.service.DeleteTask(id); err != nil {
-		http.Error(w, "not deleted", http.StatusBadRequest)
+		h.handleError(w, err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
